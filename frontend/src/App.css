@@ -1,0 +1,297 @@
+/* ── Reset & base ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #0f1117;
+  color: #e2e8f0;
+  font-size: 14px;
+}
+
+/* ── Layout ── */
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.content {
+  padding: 20px 24px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1600px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ── Topbar ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 56px;
+  background: #161b27;
+  border-bottom: 1px solid #1e2535;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-icon {
+  font-size: 20px;
+}
+
+.brand-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.brand-sub {
+  font-size: 12px;
+  color: #64748b;
+  margin-left: 4px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.error-badge {
+  background: #7f1d1d;
+  color: #fca5a5;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.updated {
+  color: #94a3b8;
+}
+
+.poll-note {
+  color: #475569;
+}
+
+/* ── Stat Cards ── */
+.cards-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 1100px) {
+  .cards-row {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .cards-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.stat-card {
+  background: #161b27;
+  border-radius: 8px;
+  padding: 18px 20px;
+  border: 1px solid #1e2535;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.1;
+}
+
+.stat-label {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Panels ── */
+.panel {
+  background: #161b27;
+  border: 1px solid #1e2535;
+  border-radius: 8px;
+  padding: 18px 20px;
+}
+
+.panel h2 {
+  margin: 0 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+/* ── Charts row ── */
+.charts-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.charts-row.two-col {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (max-width: 1100px) {
+  .charts-row {
+    grid-template-columns: 1fr;
+  }
+  .charts-row.two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Tables ── */
+.table-wrapper {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+th {
+  text-align: left;
+  color: #475569;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 6px 10px;
+  border-bottom: 1px solid #1e2535;
+}
+
+td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #1a2133;
+  color: #cbd5e1;
+  vertical-align: middle;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:hover td {
+  background: #1a2133;
+}
+
+.msg-cell {
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ts {
+  white-space: nowrap;
+  color: #475569;
+  font-size: 12px;
+}
+
+code {
+  font-family: 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 12px;
+  background: #1e2535;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #7dd3fc;
+}
+
+/* ── Badges ── */
+.badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  text-transform: capitalize;
+}
+
+.badge.resolved {
+  background: #1e3a29;
+  color: #4ade80;
+}
+
+.badge.open {
+  background: #3b1a1a;
+  color: #f87171;
+}
+
+.count-badge {
+  font-weight: 400;
+  font-size: 11px;
+  color: #475569;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* ── Misc ── */
+.empty-state {
+  padding: 24px 0;
+  color: #475569;
+  text-align: center;
+  font-size: 13px;
+}
+
+.loading {
+  padding: 24px 0;
+  color: #475569;
+  text-align: center;
+}
+
+/* Recharts overrides for dark theme */
+.recharts-text {
+  fill: #94a3b8 !important;
+}
+
+.recharts-cartesian-axis-tick-value {
+  fill: #64748b !important;
+}
+
+.recharts-legend-item-text {
+  color: #94a3b8 !important;
+}
+
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: #1e2535 !important;
+  border-color: #334155 !important;
+  color: #e2e8f0 !important;
+}

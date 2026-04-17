@@ -1,0 +1,85 @@
+{
+  "name": "02 - Suspicious IP Detection",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ingest-event",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-ingest-2",
+      "name": "Webhook: Ingest Event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "notes": "Same webhook path — n8n routes to all active workflows listening on the same path"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Track event frequency per IP across ALL event types (last 5 min)\nconst ip = $input.first().json.source_ip;\nconst now = Date.now();\nconst windowMs = 5 * 60 * 1000;\nconst threshold = 20;\n\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.ipActivity) staticData.ipActivity = {};\n\nconst history = (staticData.ipActivity[ip] || []).filter(ts => now - ts < windowMs);\nhistory.push(now);\nstaticData.ipActivity[ip] = history;\n\nreturn [{\n  json: {\n    source_ip: ip,\n    event_count: history.length,\n    suspicious: history.length >= threshold,\n    threshold,\n    window_minutes: 5\n  }\n}];"
+      },
+      "id": "track-ip-activity",
+      "name": "Code: Track IP Activity",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            { "value1": "={{ $json.suspicious }}", "value2": true }
+          ]
+        }
+      },
+      "id": "check-suspicious",
+      "name": "Filter: High-Frequency IP?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.AUTOSEC_BACKEND_URL }}/block-ip",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-API-Key", "value": "={{ $env.AUTOSEC_API_KEY }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "ip", "value": "={{ $json.source_ip }}" },
+            { "name": "reason", "value": "={{ $json.event_count }} events in {{ $json.window_minutes }} minutes — high-frequency suspicious activity" },
+            { "name": "triggered_by", "value": "n8n:suspicious-ip-detection" }
+          ]
+        }
+      },
+      "id": "block-suspicious-ip",
+      "name": "HTTP: Block Suspicious IP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 220]
+    }
+  ],
+  "connections": {
+    "Webhook: Ingest Event": {
+      "main": [[{ "node": "Code: Track IP Activity", "type": "main", "index": 0 }]]
+    },
+    "Code: Track IP Activity": {
+      "main": [[{ "node": "Filter: High-Frequency IP?", "type": "main", "index": 0 }]]
+    },
+    "Filter: High-Frequency IP?": {
+      "main": [
+        [{ "node": "HTTP: Block Suspicious IP", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "tags": ["security", "phase-1"]
+}

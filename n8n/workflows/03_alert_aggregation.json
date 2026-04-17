@@ -1,0 +1,98 @@
+{
+  "name": "03 - Alert Aggregation (every 5 min)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 5 }]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule: Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.AUTOSEC_BACKEND_URL }}/alerts?resolved=false&limit=200",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-API-Key", "value": "={{ $env.AUTOSEC_API_KEY }}" }
+          ]
+        }
+      },
+      "id": "fetch-alerts",
+      "name": "HTTP: Fetch Open Alerts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst alerts = data.alerts || [];\n\nconst bySeverity = { critical: 0, high: 0, medium: 0, low: 0 };\nconst byType = {};\n\nfor (const a of alerts) {\n  if (bySeverity[a.severity] !== undefined) bySeverity[a.severity]++;\n  byType[a.alert_type] = (byType[a.alert_type] || 0) + 1;\n}\n\nreturn [{\n  json: {\n    total_open: alerts.length,\n    by_severity: bySeverity,\n    by_type: byType,\n    summarized_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "aggregate-alerts",
+      "name": "Code: Aggregate Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            { "value1": "={{ $json.by_severity.critical }}", "operation": "larger", "value2": 0 }
+          ]
+        }
+      },
+      "id": "check-critical",
+      "name": "Filter: Any Critical Alerts?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "=:fire: *AutoSecOps — Critical Alert Summary*\nTotal open: {{ $json.total_open }}\nCritical: {{ $json.by_severity.critical }} | High: {{ $json.by_severity.high }} | Medium: {{ $json.by_severity.medium }}\nAs of {{ $json.summarized_at }}"
+            }
+          ]
+        }
+      },
+      "id": "slack-critical",
+      "name": "Slack: Critical Alert Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1120, 220]
+    }
+  ],
+  "connections": {
+    "Schedule: Every 5 Minutes": {
+      "main": [[{ "node": "HTTP: Fetch Open Alerts", "type": "main", "index": 0 }]]
+    },
+    "HTTP: Fetch Open Alerts": {
+      "main": [[{ "node": "Code: Aggregate Metrics", "type": "main", "index": 0 }]]
+    },
+    "Code: Aggregate Metrics": {
+      "main": [[{ "node": "Filter: Any Critical Alerts?", "type": "main", "index": 0 }]]
+    },
+    "Filter: Any Critical Alerts?": {
+      "main": [
+        [{ "node": "Slack: Critical Alert Notification", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "tags": ["analytics", "phase-1"]
+}

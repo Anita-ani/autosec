@@ -1,0 +1,120 @@
+version: "3.9"
+
+
+networks:
+  autosec-net:
+    driver: bridge
+
+
+volumes:
+  mongo-data:
+  n8n-data:
+  redis-data:
+
+
+services:
+
+  mongo:
+    image: mongo:7.0
+    container_name: autosec-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-autosec}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?MONGO_PASSWORD is required}
+      MONGO_INITDB_DATABASE: autosecops
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - autosec-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  redis:
+    image: redis:7-alpine
+    container_name: autosec-redis
+    restart: unless-stopped
+    command: redis-server --save "" --appendonly no --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - autosec-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: autosec-backend
+    restart: unless-stopped
+    environment:
+      MONGO_URI: mongodb://${MONGO_USER:-autosec}:${MONGO_PASSWORD}@mongo:27017/autosecops?authSource=admin
+      MONGO_DB: autosecops
+      API_KEY: ${API_KEY:?API_KEY is required}
+      N8N_WEBHOOK_BASE: http://n8n:5678/webhook
+      REDIS_URL: redis://redis:6379/0
+      RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-60}
+      RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS:-60}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - autosec-net
+    # ── Hardening ──────────────────────────────────────────────────────────────
+    read_only: true
+    tmpfs:
+      - /tmp                    # uvicorn needs a writable /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+    cpus: "1.0"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+
+  n8n:
+    image: n8nio/n8n:1.68.0
+    container_name: autosec-n8n
+    restart: unless-stopped
+    environment:
+      N8N_HOST: 0.0.0.0
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: http://n8n:5678/
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: ${N8N_USER:-admin}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD:?N8N_PASSWORD is required}
+      AUTOSEC_BACKEND_URL: http://backend:8000
+      AUTOSEC_API_KEY: ${API_KEY}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      ALERT_EMAIL: ${ALERT_EMAIL:-}
+      DB_TYPE: sqlite
+      DB_SQLITE_DATABASE: /home/node/.n8n/database.sqlite
+    volumes:
+      - n8n-data:/home/node/.n8n
+      - ./n8n/workflows:/home/node/.n8n/workflows:ro
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - autosec-net

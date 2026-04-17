@@ -1,0 +1,90 @@
+{
+  "name": "04 - Block IP Handler & Notification",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "block-ip",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-block",
+      "name": "Webhook: Block IP",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { ip, reason, triggered_by, timestamp } = $input.first().json;\n\nreturn [{\n  json: {\n    ip,\n    reason,\n    triggered_by,\n    timestamp,\n    slack_msg: `:no_entry: *IP Blocked*\\nIP: \\`${ip}\\`\\nReason: ${reason}\\nTriggered by: ${triggered_by}\\nAt: ${timestamp}`\n  }\n}];"
+      },
+      "id": "format-block",
+      "name": "Code: Format Block Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            { "value1": "={{ $env.SLACK_WEBHOOK_URL }}", "operation": "isNotEmpty" }
+          ]
+        }
+      },
+      "id": "check-slack",
+      "name": "Filter: Slack Configured?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "text", "value": "={{ $json.slack_msg }}" }
+          ]
+        }
+      },
+      "id": "slack-block-notify",
+      "name": "Slack: Block Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 220]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"notification_sent\", \"ip\": \"{{ $json.ip }}\" }"
+      },
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    }
+  ],
+  "connections": {
+    "Webhook: Block IP": {
+      "main": [[{ "node": "Code: Format Block Notification", "type": "main", "index": 0 }]]
+    },
+    "Code: Format Block Notification": {
+      "main": [[{ "node": "Filter: Slack Configured?", "type": "main", "index": 0 }]]
+    },
+    "Filter: Slack Configured?": {
+      "main": [
+        [{ "node": "Slack: Block Notification", "type": "main", "index": 0 }],
+        [{ "node": "Respond to Webhook", "type": "main", "index": 0 }]
+      ]
+    },
+    "Slack: Block Notification": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "tags": ["security", "phase-1"]
+}

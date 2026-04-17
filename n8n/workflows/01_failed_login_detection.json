@@ -1,0 +1,140 @@
+{
+  "name": "01 - Failed Login Detection",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ingest-event",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-ingest",
+      "name": "Webhook: Ingest Event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.event_type }}",
+              "operation": "equal",
+              "value2": "login_attempt"
+            },
+            {
+              "value1": "={{ $json.status }}",
+              "operation": "equal",
+              "value2": "failed"
+            }
+          ]
+        },
+        "combineOperation": "all"
+      },
+      "id": "filter-failed-login",
+      "name": "Filter: Failed Login Only",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Count failed logins from this IP in the last 60 seconds\nconst ip = $input.first().json.source_ip;\nconst now = Date.now();\nconst windowMs = 60 * 1000;\nconst threshold = 5;\n\n// Use workflow static data as an in-memory counter\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.failedLogins) staticData.failedLogins = {};\n\nconst history = (staticData.failedLogins[ip] || []).filter(ts => now - ts < windowMs);\nhistory.push(now);\nstaticData.failedLogins[ip] = history;\n\nreturn [{\n  json: {\n    source_ip: ip,\n    failed_count: history.length,\n    suspicious: history.length >= threshold,\n    threshold\n  }\n}];"
+      },
+      "id": "count-failures",
+      "name": "Code: Count Failures per IP",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 240]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.suspicious }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-threshold",
+      "name": "Filter: Threshold Exceeded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [900, 240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.AUTOSEC_BACKEND_URL }}/block-ip",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-API-Key", "value": "={{ $env.AUTOSEC_API_KEY }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "ip", "value": "={{ $json.source_ip }}" },
+            { "name": "reason", "value": "={{ $json.failed_count }} failed login attempts in 60 seconds" },
+            { "name": "triggered_by", "value": "n8n:failed-login-detection" }
+          ]
+        }
+      },
+      "id": "block-ip-call",
+      "name": "HTTP: Block IP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1120, 160]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "=:rotating_light: *AutoSecOps Alert*\nIP `{{ $json.source_ip }}` blocked after {{ $json.failed_count }} failed logins in 60s."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "slack-notify",
+      "name": "Slack: Notify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1120, 320]
+    }
+  ],
+  "connections": {
+    "Webhook: Ingest Event": {
+      "main": [[{ "node": "Filter: Failed Login Only", "type": "main", "index": 0 }]]
+    },
+    "Filter: Failed Login Only": {
+      "main": [[{ "node": "Code: Count Failures per IP", "type": "main", "index": 0 }]]
+    },
+    "Code: Count Failures per IP": {
+      "main": [[{ "node": "Filter: Threshold Exceeded?", "type": "main", "index": 0 }]]
+    },
+    "Filter: Threshold Exceeded?": {
+      "main": [
+        [{ "node": "HTTP: Block IP", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "HTTP: Block IP": {
+      "main": [[{ "node": "Slack: Notify", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": { "errorWorkflow": "" },
+  "tags": ["security", "phase-1"]
+}
