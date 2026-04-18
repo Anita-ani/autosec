@@ -44,6 +44,32 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
+      - name: Import existing resources (idempotent)
+        if: github.event.inputs.action != 'destroy'
+        run: |
+          import_if_missing() {
+            local addr=$1; local id=$2
+            terraform state list | grep -qF "$addr" && echo "already in state: $addr" && return 0
+            terraform import "$addr" "$id" && echo "imported: $addr" || echo "import failed (may not exist yet): $addr"
+          }
+          ACCOUNT=379604374615
+          REGION=us-east-1
+          APP=autosec
+
+          import_if_missing aws_secretsmanager_secret.mongo_password    "arn:aws:secretsmanager:$REGION:$ACCOUNT:secret:/autosec/prod/MONGO_PASSWORD-dMbp92"
+          import_if_missing aws_secretsmanager_secret.api_key            "arn:aws:secretsmanager:$REGION:$ACCOUNT:secret:/autosec/prod/API_KEY-k7qVSd"
+          import_if_missing aws_secretsmanager_secret.n8n_password       "arn:aws:secretsmanager:$REGION:$ACCOUNT:secret:/autosec/prod/N8N_PASSWORD-dMbp92"
+          import_if_missing aws_secretsmanager_secret.mongo_uri          "arn:aws:secretsmanager:$REGION:$ACCOUNT:secret:/autosec/prod/MONGO_URI-P6cMMH"
+          import_if_missing aws_cloudwatch_log_group.backend             "/autosec/backend"
+          import_if_missing aws_iam_role.ecs_execution                   "${APP}-ecs-execution-role"
+          import_if_missing aws_iam_role.ecs_task                        "${APP}-ecs-task-role"
+          import_if_missing aws_ecs_cluster.main                         "arn:aws:ecs:$REGION:$ACCOUNT:cluster/${APP}-cluster"
+          import_if_missing aws_lb.main                                  "arn:aws:elasticloadbalancing:$REGION:$ACCOUNT:loadbalancer/app/${APP}-alb/af48fc4aa3aab3e4"
+          import_if_missing aws_lb_target_group.backend                  "arn:aws:elasticloadbalancing:$REGION:$ACCOUNT:targetgroup/${APP}-backend-tg/ac7e287cc13eb9b8"
+          import_if_missing aws_cloudwatch_metric_alarm.http_4xx         "${APP}-4xx-errors"
+          import_if_missing aws_cloudwatch_metric_alarm.http_5xx         "${APP}-5xx-errors"
+          import_if_missing aws_cloudwatch_metric_alarm.rate_limit_429   "${APP}-429-rate-limit"
+
       - name: Terraform Plan
         run: terraform plan -out=tfplan
 

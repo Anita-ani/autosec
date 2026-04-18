@@ -8,14 +8,13 @@ terraform {
     }
   }
 
-  # Remote state in S3 — create the bucket manually once, then uncomment.
-  # backend "s3" {
-  #   bucket         = "autosec-tfstate"
-  #   key            = "autosec/terraform.tfstate"
-  #   region         = "us-east-1"
-  #   encrypt        = true
-  #   dynamodb_table = "autosec-tfstate-lock"
-  # }
+  backend "s3" {
+    bucket         = "autosec-tfstate"
+    key            = "autosec/terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+    dynamodb_table = "autosec-tfstate-lock"
+  }
 }
 
 provider "aws" {
@@ -30,7 +29,7 @@ provider "aws" {
   }
 }
 
-# ── Data sources ──────────────────────────────────────────────────────────────
+
 
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
