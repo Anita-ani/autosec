@@ -56,6 +56,7 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
         aws_secretsmanager_secret.mongo_password.arn,
         aws_secretsmanager_secret.api_key.arn,
         aws_secretsmanager_secret.n8n_password.arn,
+        aws_secretsmanager_secret.mongo_uri.arn,
       ]
     }]
   })
@@ -102,6 +103,10 @@ resource "aws_ecs_task_definition" "backend" {
 
       # Secrets injected at runtime from Secrets Manager
       secrets = [
+        {
+          name      = "MONGO_URI"
+          valueFrom = aws_secretsmanager_secret.mongo_uri.arn
+        },
         {
           name      = "MONGO_PASSWORD"
           valueFrom = aws_secretsmanager_secret.mongo_password.arn
