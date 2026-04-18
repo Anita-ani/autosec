@@ -26,6 +26,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.middleware.auth import APIKeyMiddleware
 from backend.middleware.rate_limit import RateLimitMiddleware, cleanup_stale_ips, init_redis, close_redis
 from backend.middleware.request_logger import RequestLoggerMiddleware, RequestIdFilter
 from backend.routes import events, alerts, auth, block_ip, health, stats, replay, webhooks
@@ -88,9 +89,10 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# Order matters: logger → rate limiter → CORS
+# Order matters: logger → rate limiter → API key auth → CORS
 app.add_middleware(RequestLoggerMiddleware)
 app.add_middleware(RateLimitMiddleware)
+app.add_middleware(APIKeyMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,

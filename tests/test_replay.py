@@ -78,13 +78,15 @@ async def test_replay_requires_auth(client):
 
 @pytest.mark.asyncio
 async def test_replay_until_defaults_to_now(client):
+    from datetime import datetime, timezone, timedelta
+    dynamic_since = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
     with patch("backend.services.replay.run", new_callable=AsyncMock) as mock_run:
         mock_run.return_value = {
-            "window": {"since": SINCE, "until": "2026-04-16T00:00:00+00:00"},
+            "window": {"since": dynamic_since, "until": datetime.now(timezone.utc).isoformat()},
             "dry_run": True, "events_scanned": 0,
             "rules_fired": {}, "alerts_created": 0, "alerts_skipped_dedup": 0,
         }
-        resp = await client.post("/replay", json={"since": SINCE})
+        resp = await client.post("/replay", json={"since": dynamic_since})
     assert resp.status_code == 200
     _, call_kwargs = mock_run.call_args
     assert call_kwargs["until"] is not None

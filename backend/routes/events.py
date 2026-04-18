@@ -1,10 +1,9 @@
 import logging
-from fastapi import APIRouter, Depends, Request, HTTPException, status
+from fastapi import APIRouter, Request, HTTPException, status
 from datetime import datetime, timezone
 from bson import ObjectId
 
 from backend.models.schemas import EventPayload
-from backend.middleware.rbac import require_analyst, require_operator
 from backend.services import mongo, n8n, detection, geo, webhooks
 
 logger = logging.getLogger(__name__)
@@ -12,7 +11,7 @@ router = APIRouter(prefix="/events", tags=["Events"])
 
 
 @router.post("", status_code=status.HTTP_202_ACCEPTED)
-async def ingest_event(payload: EventPayload, request: Request, _user: dict = Depends(require_operator)):
+async def ingest_event(payload: EventPayload, request: Request):
     """
     Ingest a security event.
     Stores to MongoDB and forwards to n8n for workflow evaluation.

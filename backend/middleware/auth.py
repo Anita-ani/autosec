@@ -10,7 +10,7 @@ import os
 import hmac
 
 # Paths that do NOT require authentication
-PUBLIC_PATHS = {"/health", "/docs", "/openapi.json", "/redoc"}
+PUBLIC_PATHS = {"/health", "/docs", "/openapi.json", "/redoc", "/auth/token"}
 
 
 class APIKeyMiddleware(BaseHTTPMiddleware):
