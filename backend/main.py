@@ -33,7 +33,7 @@ from backend.routes import events, alerts, auth, block_ip, health, stats, replay
 from backend.services.mongo import init_indexes, close_client
 
 
-# ── Logging ───────────────────────────────────────────────────────────────────
+# ── Logging 
 
 logging.config.dictConfig({
     "version": 1,
@@ -59,7 +59,7 @@ for _handler in logging.root.handlers:
     _handler.addFilter(_request_id_filter)
 
 
-# ── Lifespan ──────────────────────────────────────────────────────────────────
+# ── Lifespan 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -72,13 +72,13 @@ async def lifespan(app: FastAPI):
     await close_client()
 
 
-# ── CORS origins ──────────────────────────────────────────────────────────────
+# ── CORS origins 
 
 _cors_env = os.environ.get("CORS_ORIGINS", "").strip()
 _cors_origins = [o.strip() for o in _cors_env.split(",") if o.strip()] if _cors_env else ["*"]
 
 
-# ── App ───────────────────────────────────────────────────────────────────────
+# ── App 
 
 app = FastAPI(
     title="AutoSecOps API",
@@ -100,7 +100,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Routers ───────────────────────────────────────────────────────────────────
+# ── Routers 
 
 app.include_router(health.router)
 app.include_router(auth.router)
