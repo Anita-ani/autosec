@@ -347,6 +347,7 @@ code {
   width: 100%;
   aspect-ratio: 2 / 1;
   min-height: 180px;
+  touch-action: pan-y;
 }
 
 .geo-map-wrap svg {
@@ -380,10 +381,20 @@ code {
   color: var(--text-muted) !important;
 }
 
+/* Prevent tooltip portal from intercepting scroll events */
+.recharts-tooltip-wrapper {
+  pointer-events: none !important;
+}
+
 .recharts-tooltip-wrapper .recharts-default-tooltip {
   background: var(--surface-hover) !important;
   border-color: var(--border-2) !important;
   color: var(--text) !important;
+}
+
+/* Hide the semi-transparent cursor rect that "dims" bar chart rows on hover */
+.recharts-bar-background-rectangle {
+  display: none !important;
 }
 
 /* ── Login page ── */
