@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from backend.dependencies import require_operator, require_any_role
 from backend.models.schemas import AlertCreate
 from backend.services import mongo, triage as triage_svc, webhooks
+from backend.services.feed import manager as feed_manager
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
 
@@ -80,10 +81,9 @@ async def resolve_alert(alert_id: str):
         "created_at": now,
     })
 
-    await webhooks.fire("alert.resolved", {
-        "alert_id": alert_id,
-        "resolved_at": now.isoformat(),
-    })
+    resolved_payload = {"alert_id": alert_id, "resolved_at": now.isoformat()}
+    await webhooks.fire("alert.resolved", resolved_payload)
+    await feed_manager.broadcast({"type": "alert.resolved", "data": resolved_payload})
 
     return {"status": "resolved", "alert_id": alert_id}
 

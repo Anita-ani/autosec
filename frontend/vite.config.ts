@@ -6,8 +6,18 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/stats': 'http://localhost:8000',
-      '/alerts': 'http://localhost:8000',
+      '/auth':     'http://localhost:8000',
+      '/alerts':   'http://localhost:8000',
+      '/events':   'http://localhost:8000',
+      '/stats':    'http://localhost:8000',
+      '/block-ip': 'http://localhost:8000',
+      '/webhooks': 'http://localhost:8000',
+      '/replay':   'http://localhost:8000',
+      '/health':   'http://localhost:8000',
+      '/ws': {
+        target: 'ws://localhost:8000',
+        ws: true,
+      },
     },
   },
 })

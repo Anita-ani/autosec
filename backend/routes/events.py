@@ -6,6 +6,7 @@ from bson import ObjectId
 from backend.dependencies import require_operator, require_any_role
 from backend.models.schemas import EventPayload
 from backend.services import mongo, n8n, detection, geo, webhooks
+from backend.services.feed import manager as feed_manager
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/events", tags=["Events"])
@@ -85,12 +86,14 @@ async def ingest_event(payload: EventPayload, request: Request):
         alerts_created += 1
 
         # Fire webhooks — strip _id (ObjectId) before serialising
-        await webhooks.fire("alert.created", {
+        serialised_alert = {
             k: v for k, v in alert_doc.items() if k != "_id"
         } | {
             "id": str(alert_result.inserted_id),
             "created_at": alert_doc["created_at"].isoformat(),
-        })
+        }
+        await webhooks.fire("alert.created", serialised_alert)
+        await feed_manager.broadcast({"type": "alert.created", "data": serialised_alert})
 
     return {"status": "accepted", "event_id": event_id, "alerts_triggered": alerts_created}
 

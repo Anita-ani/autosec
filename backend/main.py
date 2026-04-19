@@ -29,7 +29,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.middleware.auth import APIKeyMiddleware
 from backend.middleware.rate_limit import RateLimitMiddleware, cleanup_stale_ips, init_redis, close_redis
 from backend.middleware.request_logger import RequestLoggerMiddleware, RequestIdFilter
-from backend.routes import events, alerts, auth, block_ip, health, stats, replay, webhooks
+from backend.routes import events, alerts, auth, block_ip, health, stats, replay, webhooks, ws
 from backend.services.mongo import init_indexes, close_client
 
 
@@ -110,3 +110,4 @@ app.include_router(block_ip.router)
 app.include_router(stats.router)
 app.include_router(replay.router)
 app.include_router(webhooks.router)
+app.include_router(ws.router)

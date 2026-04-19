@@ -9,9 +9,10 @@ const SEVERITY_COLOR: Record<string, string> = {
 
 interface Props {
   alerts: Alert[]
+  newIds?: Set<string>
 }
 
-export function AlertsTable({ alerts }: Props) {
+export function AlertsTable({ alerts, newIds }: Props) {
   if (alerts.length === 0) {
     return <div className="empty-state">No alerts</div>
   }
@@ -31,7 +32,7 @@ export function AlertsTable({ alerts }: Props) {
         </thead>
         <tbody>
           {alerts.map((a) => (
-            <tr key={a.id}>
+            <tr key={a.id} className={newIds?.has(a.id) ? 'alert-new' : ''}>
               <td>
                 <code>{a.alert_type}</code>
               </td>
