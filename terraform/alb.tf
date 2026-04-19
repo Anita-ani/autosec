@@ -34,7 +34,7 @@ resource "aws_lb_target_group" "backend" {
   tags = { Name = "${var.app_name}-backend-tg" }
 }
 
-# ── HTTP listener ─────────────────────────────────────────────────────────────
+# ── HTTP listener 
 
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
