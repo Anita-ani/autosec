@@ -1,4 +1,4 @@
-# ── VPC ───────────────────────────────────────────────────────────────────────
+# ── VPC 
 
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
@@ -42,7 +42,7 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
-# ── Route tables ──────────────────────────────────────────────────────────────
+# ── Route tables 
 
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
@@ -92,7 +92,7 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private.id
 }
 
-# ── Security groups ───────────────────────────────────────────────────────────
+# ── Security groups 
 
 resource "aws_security_group" "alb" {
   name        = "${var.app_name}-alb-sg"
