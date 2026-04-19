@@ -32,16 +32,21 @@ async def create_webhook(body: WebhookConfig):
     doc = body.model_dump()
     doc["created_at"] = datetime.now(timezone.utc)
     result = await db.webhooks.insert_one(doc)
+    webhook_id = str(result.inserted_id)
 
     await db.audit_logs.insert_one({
         "action": "webhook_created",
-        "webhook_id": str(result.inserted_id),
+        "webhook_id": webhook_id,
         "url": body.url,
         "events": body.events,
         "created_at": doc["created_at"],
     })
 
-    return {"id": str(result.inserted_id), **doc}
+    return {
+        "id": webhook_id,
+        **body.model_dump(),
+        "created_at": doc["created_at"].isoformat(),
+    }
 
 
 @router.get("")

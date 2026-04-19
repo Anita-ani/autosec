@@ -1,5 +1,3 @@
-# ── Log group ─────────────────────────────────────────────────────────────────
-
 resource "aws_cloudwatch_log_group" "backend" {
   name              = "/${var.app_name}/backend"
   retention_in_days = var.log_retention_days
@@ -7,16 +5,14 @@ resource "aws_cloudwatch_log_group" "backend" {
   tags = { Name = "${var.app_name}-backend-logs" }
 }
 
-# ── SNS topic for alarms ──────────────────────────────────────────────────────
+
 
 resource "aws_sns_topic" "alarms" {
   name = "${var.app_name}-alarms"
   tags = { Name = "${var.app_name}-alarms" }
 }
 
-# ── Metric filters ────────────────────────────────────────────────────────────
-# The backend emits structured JSON logs. These filters extract HTTP status
-# codes from the access log entries written by RequestLoggerMiddleware.
+
 
 resource "aws_cloudwatch_log_metric_filter" "http_4xx" {
   name           = "${var.app_name}-http-4xx"

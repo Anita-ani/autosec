@@ -8,14 +8,14 @@ resource "aws_vpc" "main" {
   tags = { Name = "${var.app_name}-vpc" }
 }
 
-# ── Internet Gateway ──────────────────────────────────────────────────────────
+
 
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
   tags   = { Name = "${var.app_name}-igw" }
 }
 
-# ── Public subnets (ALB) — one per AZ ────────────────────────────────────────
+
 
 resource "aws_subnet" "public" {
   count                   = 2
@@ -27,7 +27,7 @@ resource "aws_subnet" "public" {
   tags = { Name = "${var.app_name}-public-${count.index + 1}" }
 }
 
-# ── Private subnets (ECS tasks) — one per AZ ─────────────────────────────────
+
 
 resource "aws_subnet" "private" {
   count             = 2

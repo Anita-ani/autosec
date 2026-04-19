@@ -83,9 +83,10 @@ async def ingest_event(payload: EventPayload, request: Request):
         )
         alerts_created += 1
 
-        # Fire webhooks — non-blocking, failure never fails the request
+        # Fire webhooks — strip _id (ObjectId) before serialising
         await webhooks.fire("alert.created", {
-            **alert_doc,
+            k: v for k, v in alert_doc.items() if k != "_id"
+        } | {
             "id": str(alert_result.inserted_id),
             "created_at": alert_doc["created_at"].isoformat(),
         })

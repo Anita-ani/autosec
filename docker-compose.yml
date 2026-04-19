@@ -106,6 +106,7 @@ services:
       AUTOSEC_API_KEY: ${API_KEY}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
       ALERT_EMAIL: ${ALERT_EMAIL:-}
+      N8N_LICENSE_KEY: ${N8N_LICENSE_KEY:-}
       DB_TYPE: sqlite
       DB_SQLITE_DATABASE: /home/node/.n8n/database.sqlite
     volumes:

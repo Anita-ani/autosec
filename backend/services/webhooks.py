@@ -62,18 +62,49 @@ async def fire(event_type: str, payload: dict) -> None:
     )
 
 
+def _slack_payload(envelope: dict) -> dict:
+    """Format an alert envelope as a Slack Block Kit message."""
+    data = envelope.get("data", {})
+    event = envelope.get("event", "alert.created")
+    ts = envelope.get("timestamp", "")[:19].replace("T", " ")
+
+    severity = data.get("severity", "unknown").upper()
+    severity_prefix = {"CRITICAL": "[CRITICAL]", "HIGH": "[HIGH]",
+                       "MEDIUM": "[MEDIUM]", "LOW": "[LOW]"}.get(severity, "[ALERT]")
+
+    alert_type = data.get("alert_type", event)
+    source_ip  = data.get("source_ip", "n/a")
+    message    = data.get("message", "")
+
+    summary = (
+        f"*{severity_prefix} AutoSecOps — {alert_type}*\n"
+        f"*Severity:* {severity}    *Source IP:* `{source_ip}`\n"
+        f"*Message:* {message}\n"
+        f"*Detected:* {ts} UTC"
+    )
+
+    return {
+        "text": f"{severity_prefix} AutoSecOps: {alert_type} from {source_ip}",
+        "blocks": [
+            {"type": "section", "text": {"type": "mrkdwn", "text": summary}},
+            {"type": "divider"},
+        ],
+    }
+
+
 async def _deliver(hook: dict, envelope: dict) -> None:
     headers = {"Content-Type": "application/json"}
     if hook.get("secret"):
         headers["X-Webhook-Secret"] = hook["secret"]
 
     url = hook["url"]
+    payload = _slack_payload(envelope) if hook.get("type") == "slack" else envelope
     last_exc: Exception | None = None
 
     for attempt in range(_MAX_RETRIES + 1):
         try:
             async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-                resp = await client.post(url, json=envelope, headers=headers)
+                resp = await client.post(url, json=payload, headers=headers)
                 resp.raise_for_status()
             logger.info("Webhook delivered: url=%s event=%s status=%d",
                         url, envelope["event"], resp.status_code)

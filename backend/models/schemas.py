@@ -73,6 +73,10 @@ class AlertCreate(BaseModel):
 
 class WebhookConfig(BaseModel):
     url: str = Field(..., min_length=8, max_length=500, description="HTTPS URL to POST alert payloads to")
+    type: Literal["generic", "slack"] = Field(
+        default="generic",
+        description="slack — formats payload as Slack blocks; generic — raw JSON envelope",
+    )
     events: list[str] = Field(
         default=["alert.created"],
         description="Event types to subscribe to. Supported: alert.created, alert.resolved",

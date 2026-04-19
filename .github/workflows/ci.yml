@@ -47,7 +47,7 @@ jobs:
       - name: Scan requirements.txt
         run: safety check -r backend/requirements.txt --severity high
 
-  # ── Tests ───────────────────────────────────────────────────────────────────
+  
   test:
     name: Test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
@@ -77,7 +77,7 @@ jobs:
           name: coverage-report
           path: .coverage
 
-  # ── Docker build ────────────────────────────────────────────────────────────
+
   build:
     name: Docker build
     runs-on: ubuntu-latest
@@ -98,8 +98,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ── Push to ECR + deploy ────────────────────────────────────────────────────
-  # Runs only on pushes to main (not on PRs).
+  
   deploy:
     name: Push to ECR & deploy to ECS
     runs-on: ubuntu-latest
