@@ -92,9 +92,10 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
   const wsConnected = useAlertFeed(handleNewAlert, handleResolved)
 
-  const lastUpdated = stats.lastUpdated ?? alertsData.lastUpdated
-  const hasError    = stats.error || alertsData.error
-  const role        = getRole()
+  const lastUpdated    = stats.lastUpdated ?? alertsData.lastUpdated
+  const hasError       = stats.error || alertsData.error
+  const role           = getRole()
+  const initialLoading = !stats.data && !alertsData.data && !hasError
 
   return (
     <div className="app">
@@ -124,7 +125,14 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         </div>
       </header>
 
-      <main className="content">
+      {initialLoading && (
+        <div className="loading-screen">
+          <div className="loading-spinner" />
+          <p className="loading-label">Loading dashboard…</p>
+        </div>
+      )}
+
+      <main className="content" style={initialLoading ? { display: 'none' } : undefined}>
         {/* Stat Cards */}
         {stats.data && (
           <section className="cards-row">

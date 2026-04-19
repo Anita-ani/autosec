@@ -41,7 +41,7 @@ export function SeverityPieChart({ data }: Props) {
             />
           ))}
         </Pie>
-        <Tooltip formatter={(val) => [val, 'alerts']} />
+        <Tooltip formatter={(val) => [val, 'alerts']} wrapperStyle={{ pointerEvents: 'none' }} />
         <Legend />
       </PieChart>
     </ResponsiveContainer>

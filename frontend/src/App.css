@@ -328,6 +328,36 @@ code {
   animation: flash-row 1.5s ease-out forwards;
 }
 
+/* ── Full-page loading screen ── */
+.loading-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: calc(100vh - 56px);
+}
+
+.loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border-2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-label {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
 /* ── Misc ── */
 .empty-state {
   padding: 24px 0;
