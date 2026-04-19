@@ -22,8 +22,8 @@ import os
 from datetime import datetime, timezone, timedelta
 from typing import Any
 
+import bcrypt as _bcrypt
 from jose import jwt, JWTError  # noqa: F401 — re-exported for callers
-from passlib.context import CryptContext
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +37,6 @@ def _secret() -> str:
 
 def _expire_minutes() -> int:
     return int(os.environ.get("JWT_EXPIRE_MINUTES", str(_DEFAULT_EXPIRE_MINUTES)))
-
-
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 # ── User store ────────────────────────────────────────────────────────────────
@@ -65,12 +62,12 @@ def get_user(username: str) -> dict | None:
 # ── Password helpers ──────────────────────────────────────────────────────────
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return _pwd_context.verify(plain, hashed)
+    return _bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
 def hash_password(plain: str) -> str:
     """Utility — call this once to generate the hash to store in AUTOSEC_USERS."""
-    return _pwd_context.hash(plain)
+    return _bcrypt.hashpw(plain.encode(), _bcrypt.gensalt(12)).decode()
 
 
 def authenticate_user(username: str, password: str) -> dict | None:

@@ -1,6 +1,6 @@
 """
 Tests for GET /alerts/{id}/triage and the triage service.
-All Anthropic API calls are mocked — no real API key required.
+All Gemini API calls are mocked — no real API key required.
 """
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -70,7 +70,7 @@ def test_parse_response_strips_leading_numbers():
         assert not step[0].isdigit()
 
 
-# ── Service (mocked Anthropic client) ────────────────────────────────────────
+# ── Service (mocked AI client) ───────────────────────────────────────────────
 
 def _make_db(alert_exists=True):
     from tests.conftest import _async_cursor
@@ -84,29 +84,31 @@ def _make_db(alert_exists=True):
     return fake_db
 
 
-def _mock_anthropic(response_text: str):
-    mock_content = MagicMock()
-    mock_content.text = response_text
+def _mock_gemini(response_text: str):
     mock_message = MagicMock()
-    mock_message.content = [mock_content]
+    mock_message.content = response_text
+    mock_choice = MagicMock()
+    mock_choice.message = mock_message
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
     mock_client = AsyncMock()
-    mock_client.messages.create = AsyncMock(return_value=mock_message)
+    mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
     return mock_client
 
 
 @pytest.mark.asyncio
 async def test_service_returns_triage_report():
     db = _make_db()
-    mock_client = _mock_anthropic(CLAUDE_RESPONSE)
+    mock_client = _mock_gemini(CLAUDE_RESPONSE)
 
-    with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}), \
-         patch("anthropic.AsyncAnthropic", return_value=mock_client):
+    with patch.dict("os.environ", {"GEMINI_API_KEY": "test-key"}), \
+         patch("openai.AsyncOpenAI", return_value=mock_client):
         result = await triage_svc.run(SAMPLE_ALERT, db)
 
     assert result["alert_id"] == ALERT_ID
     assert "summary" in result
     assert "remediation_steps" in result
-    assert result["model"] == "claude-sonnet-4-6"
+    assert result["model"] == "gemini-2.0-flash"
 
 
 @pytest.mark.asyncio
@@ -115,8 +117,8 @@ async def test_service_raises_without_api_key():
 
     import os
     with patch.dict("os.environ", {}, clear=False):
-        os.environ.pop("ANTHROPIC_API_KEY", None)
-        with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
+        os.environ.pop("GEMINI_API_KEY", None)
+        with pytest.raises(RuntimeError, match="GEMINI_API_KEY"):
             await triage_svc.run(SAMPLE_ALERT, db)
 
 
@@ -135,10 +137,10 @@ async def test_service_includes_related_events_count():
     fake_db.events = fake_col
     fake_db.alerts = fake_col
 
-    mock_client = _mock_anthropic(CLAUDE_RESPONSE)
+    mock_client = _mock_gemini(CLAUDE_RESPONSE)
 
-    with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}), \
-         patch("anthropic.AsyncAnthropic", return_value=mock_client):
+    with patch.dict("os.environ", {"GEMINI_API_KEY": "test-key"}), \
+         patch("openai.AsyncOpenAI", return_value=mock_client):
         result = await triage_svc.run(SAMPLE_ALERT, fake_db)
 
     assert result["related_events_count"] == 2
@@ -149,10 +151,10 @@ async def test_service_includes_related_events_count():
 @pytest.mark.asyncio
 async def test_triage_route_returns_200(client, mock_mongo):
     mock_mongo.alerts.find_one = AsyncMock(return_value={**SAMPLE_ALERT})
-    mock_client = _mock_anthropic(CLAUDE_RESPONSE)
+    mock_client = _mock_gemini(CLAUDE_RESPONSE)
 
-    with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}), \
-         patch("anthropic.AsyncAnthropic", return_value=mock_client):
+    with patch.dict("os.environ", {"GEMINI_API_KEY": "test-key"}), \
+         patch("openai.AsyncOpenAI", return_value=mock_client):
         resp = await client.get(f"/alerts/{ALERT_ID}/triage")
 
     assert resp.status_code == 200
@@ -165,7 +167,7 @@ async def test_triage_route_returns_200(client, mock_mongo):
 async def test_triage_route_404_for_missing_alert(client, mock_mongo):
     mock_mongo.alerts.find_one = AsyncMock(return_value=None)
 
-    with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
+    with patch.dict("os.environ", {"GEMINI_API_KEY": "test-key"}):
         resp = await client.get(f"/alerts/{ALERT_ID}/triage")
 
     assert resp.status_code == 404
@@ -177,11 +179,11 @@ async def test_triage_route_503_when_no_api_key(client, mock_mongo):
 
     import os
     with patch.dict("os.environ", {}, clear=False):
-        os.environ.pop("ANTHROPIC_API_KEY", None)
+        os.environ.pop("GEMINI_API_KEY", None)
         resp = await client.get(f"/alerts/{ALERT_ID}/triage")
 
     assert resp.status_code == 503
-    assert "ANTHROPIC_API_KEY" in resp.json()["detail"]
+    assert "GEMINI_API_KEY" in resp.json()["detail"]
 
 
 @pytest.mark.asyncio

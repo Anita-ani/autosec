@@ -1,13 +1,14 @@
 """
 AI-assisted alert triage — generates a human-readable summary and remediation
-steps for an alert by sending context to Claude.
+steps for an alert by sending context to Gemini.
 
 Requires:
-    ANTHROPIC_API_KEY environment variable
-    anthropic Python package (added to requirements.txt)
+    GEMINI_API_KEY environment variable
+    openai Python package (already in most requirements.txt; used for the
+    OpenAI-compatible Gemini endpoint)
 
-The triage call is intentionally synchronous within the async route — the
-Anthropic SDK's async client is used so we don't block the event loop.
+The triage call is intentionally async — the openai async client is used so
+we don't block the event loop.
 
 Context sent to the model:
   - The alert document (type, severity, source IP, message, timestamps)
@@ -33,18 +34,19 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "claude-sonnet-4-6"
+_MODEL = "gemini-2.0-flash"
 _MAX_EVENTS = 20
+_GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
 
 async def run(alert: dict, db) -> dict[str, Any]:
     """
     Generate a triage report for the given alert dict.
-    Raises RuntimeError if ANTHROPIC_API_KEY is not set.
+    Raises RuntimeError if GEMINI_API_KEY is not set.
     """
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if not api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY is not configured")
+        raise RuntimeError("GEMINI_API_KEY is not configured")
 
     source_ip = alert.get("source_ip", "unknown")
     since = datetime.now(timezone.utc) - timedelta(hours=1)
@@ -67,15 +69,19 @@ async def run(alert: dict, db) -> dict[str, Any]:
 
     prompt = _build_prompt(alert, related_events, open_count)
 
-    import anthropic
-    client = anthropic.AsyncAnthropic(api_key=api_key)
-    message = await client.messages.create(
+    from openai import AsyncOpenAI
+    client = AsyncOpenAI(
+        api_key=api_key,
+        base_url=_GEMINI_BASE_URL,
+    )
+
+    response = await client.chat.completions.create(
         model=_MODEL,
         max_tokens=1024,
         messages=[{"role": "user", "content": prompt}],
     )
 
-    raw = message.content[0].text
+    raw = response.choices[0].message.content
     parsed = _parse_response(raw)
 
     return {
@@ -134,7 +140,7 @@ def _format_events(events: list[dict]) -> str:
 
 def _parse_response(text: str) -> dict[str, Any]:
     """
-    Parse the structured response from Claude into a dict.
+    Parse the structured response from Gemini into a dict.
     Falls back gracefully if the format doesn't match.
     """
     summary = ""
@@ -163,7 +169,6 @@ def _parse_response(text: str) -> dict[str, Any]:
         elif section == "severity" and stripped:
             severity_assessment += stripped + " "
         elif section == "remediation" and stripped:
-            # Strip leading number+dot (e.g. "1. ", "2. ")
             import re
             cleaned = re.sub(r"^\d+\.\s*", "", stripped)
             if cleaned:

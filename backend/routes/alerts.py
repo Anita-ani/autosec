@@ -93,8 +93,8 @@ async def triage_alert(alert_id: str):
     """
     Generate an AI-assisted triage report for an alert.
 
-    Calls Claude (claude-sonnet-4-6) with the alert context and recent related
-    events from the same source IP. Requires ANTHROPIC_API_KEY to be set.
+    Calls Gemini (gemini-2.0-flash) with the alert context and recent related
+    events from the same source IP. Requires GEMINI_API_KEY to be set.
 
     Returns a summary, severity assessment, and remediation steps.
     """

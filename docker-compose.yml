@@ -64,6 +64,8 @@ services:
       RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-60}
       RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS:-60}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
+      AUTOSEC_USERS: '[{"username":"admin","password_hash":"$$2b$$12$$Btg8UqnetW/Udp4qFsWtDu9p5IXfMm87PwgwLcACG/ysFAGZm05Iu","role":"operator"},{"username":"analyst","password_hash":"$$2b$$12$$OguX3/NOetQs7fMIQwH9/u.f4UIVD5CBLm6fToQ.JKeostCfTwY.W","role":"analyst"}]'
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-please}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:
@@ -114,6 +116,21 @@ services:
       - ./n8n/workflows:/home/node/.n8n/workflows:ro
     ports:
       - "${N8N_PORT:-5678}:5678"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - autosec-net
+
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: autosec-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
     depends_on:
       backend:
         condition: service_healthy

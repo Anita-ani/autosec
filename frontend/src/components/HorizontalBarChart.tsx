@@ -43,7 +43,7 @@ export function HorizontalBarChart({ data, color = '#4f8ef7', label = 'count' }:
             v.length > 22 ? v.slice(0, 21) + '…' : v
           }
         />
-        <Tooltip formatter={(val: number) => [val, label]} />
+        <Tooltip formatter={(val) => [val, label]} />
         <Bar dataKey="value" radius={[0, 3, 3, 0]}>
           {entries.map((entry) => (
             <Cell key={entry.name} fill={color} />
