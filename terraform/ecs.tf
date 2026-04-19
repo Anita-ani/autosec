@@ -1,4 +1,4 @@
-# ── ECS Cluster ───────────────────────────────────────────────────────────────
+# ── ECS Cluster
 
 resource "aws_ecs_cluster" "main" {
   name = "${var.app_name}-cluster"
@@ -77,7 +77,7 @@ resource "aws_iam_role" "ecs_task" {
   })
 }
 
-# ── Task definition ───────────────────────────────────────────────────────────
+# ── Task definition 
 
 resource "aws_ecs_task_definition" "backend" {
   family                   = "${var.app_name}-backend"
