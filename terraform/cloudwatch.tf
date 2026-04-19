@@ -56,7 +56,7 @@ resource "aws_cloudwatch_log_metric_filter" "http_429" {
   }
 }
 
-# ── Alarms ────────────────────────────────────────────────────────────────────
+# ── Alarms 
 
 resource "aws_cloudwatch_metric_alarm" "rate_limit" {
   alarm_name          = "${var.app_name}-rate-limit-spike"
