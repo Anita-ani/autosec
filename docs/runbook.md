@@ -105,16 +105,16 @@ cp .env.example .env
 Open `.env` and fill in the three required secrets:
 
 ```dotenv
-# ── Required ──────────────────────────────────────────────────────────────────
+
 MONGO_PASSWORD=choose-a-strong-password
 API_KEY=generate-a-32-char-random-string
 N8N_PASSWORD=your-n8n-dashboard-password
 
-# ── Optional ──────────────────────────────────────────────────────────────────
+
 SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...   # Slack alerts
 ALERT_EMAIL=security@yourcompany.com
 
-# ── Defaults (safe to leave as-is for local dev) ──────────────────────────────
+
 MONGO_USER=autosec
 N8N_USER=admin
 BACKEND_PORT=8000
