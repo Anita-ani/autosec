@@ -1,13 +1,14 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from datetime import datetime, timezone
 
+from backend.dependencies import require_operator, require_any_role
 from backend.models.schemas import BlockIPRequest
 from backend.services import mongo, n8n
 
 router = APIRouter(prefix="/block-ip", tags=["Block IP"])
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_operator)])
 async def block_ip(payload: BlockIPRequest):
     """
     Add an IP to the blocklist.
@@ -40,7 +41,7 @@ async def block_ip(payload: BlockIPRequest):
     return {"status": "blocked", "ip": payload.ip}
 
 
-@router.get("")
+@router.get("", dependencies=[Depends(require_any_role)])
 async def list_blocked_ips(limit: int = 50, skip: int = 0):
     """Return the blocked IP list."""
     if limit > 200:
@@ -54,7 +55,7 @@ async def list_blocked_ips(limit: int = 50, skip: int = 0):
     return {"blocked_ips": ips, "count": len(ips)}
 
 
-@router.delete("/{ip}")
+@router.delete("/{ip}", dependencies=[Depends(require_operator)])
 async def unblock_ip(ip: str):
     """Remove an IP from the blocklist."""
     db = mongo.get_db()

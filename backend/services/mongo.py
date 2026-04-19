@@ -33,6 +33,7 @@ async def init_indexes():
     await db.alerts.create_index([("resolved", ASCENDING)])
     await db.blocked_ips.create_index([("ip", ASCENDING)], unique=True)
     await db.audit_logs.create_index([("created_at", DESCENDING)])
+    await db.webhook_delivery_log.create_index([("webhook_id", ASCENDING), ("delivered_at", DESCENDING)])
     logger.info("MongoDB indexes initialized")
 
 

@@ -98,6 +98,7 @@ async def _deliver(hook: dict, envelope: dict) -> None:
         headers["X-Webhook-Secret"] = hook["secret"]
 
     url = hook["url"]
+    webhook_id = str(hook.get("_id", ""))
     payload = _slack_payload(envelope) if hook.get("type") == "slack" else envelope
     last_exc: Exception | None = None
 
@@ -108,6 +109,8 @@ async def _deliver(hook: dict, envelope: dict) -> None:
                 resp.raise_for_status()
             logger.info("Webhook delivered: url=%s event=%s status=%d",
                         url, envelope["event"], resp.status_code)
+            await _log_delivery(webhook_id, url, envelope["event"], attempt + 1,
+                                "success", resp.status_code, None)
             return
         except Exception as exc:
             last_exc = exc
@@ -116,3 +119,33 @@ async def _deliver(hook: dict, envelope: dict) -> None:
 
     logger.warning("Webhook delivery failed after %d attempts for %s: %s",
                    _MAX_RETRIES + 1, url, last_exc)
+    await _log_delivery(webhook_id, url, envelope["event"], _MAX_RETRIES + 1,
+                        "failed", None, str(last_exc))
+
+
+async def _log_delivery(
+    webhook_id: str,
+    url: str,
+    event_type: str,
+    attempts: int,
+    outcome: str,
+    status_code: int | None,
+    error: str | None,
+) -> None:
+    try:
+        db = mongo.get_db()
+        doc: dict = {
+            "webhook_id": webhook_id,
+            "url": url,
+            "event_type": event_type,
+            "attempts": attempts,
+            "outcome": outcome,
+            "delivered_at": datetime.now(timezone.utc),
+        }
+        if status_code is not None:
+            doc["status_code"] = status_code
+        if error is not None:
+            doc["error"] = error
+        await db.webhook_delivery_log.insert_one(doc)
+    except Exception as exc:
+        logger.debug("Failed to write webhook delivery log: %s", exc)

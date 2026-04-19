@@ -13,11 +13,21 @@ import os
 os.environ.setdefault("MONGO_URI", "mongodb://localhost:27017")
 os.environ.setdefault("API_KEY", "test-api-key-1234")
 os.environ.setdefault("N8N_WEBHOOK_BASE", "http://localhost:5678/webhook")
+os.environ.setdefault("JWT_SECRET", "test-jwt-secret-phase6")
 
 from backend.main import app
+from backend.services.auth import create_access_token
 
 VALID_KEY = "test-api-key-1234"
 HEADERS = {"X-API-Key": VALID_KEY}
+
+
+def make_jwt(role: str = "operator", username: str = "testuser") -> str:
+    return create_access_token({"sub": username, "role": role})
+
+
+def jwt_headers(role: str = "operator") -> dict:
+    return {"Authorization": f"Bearer {make_jwt(role)}"}
 
 
 @pytest_asyncio.fixture
@@ -53,6 +63,7 @@ def mock_mongo():
     fake_db.blocked_ips = fake_collection
     fake_db.audit_logs = fake_collection
     fake_db.webhooks = fake_collection
+    fake_db.webhook_delivery_log = fake_collection
 
     # Patch admin ping for health check
     fake_admin = MagicMock()

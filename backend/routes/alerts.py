@@ -1,13 +1,14 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from datetime import datetime, timezone
 
+from backend.dependencies import require_operator, require_any_role
 from backend.models.schemas import AlertCreate
-from backend.services import mongo, triage as triage_svc
+from backend.services import mongo, triage as triage_svc, webhooks
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_operator)])
 async def create_alert(payload: AlertCreate):
     """
     Create an alert directly.
@@ -36,7 +37,7 @@ async def create_alert(payload: AlertCreate):
     return {"status": "created", "alert_id": alert_id}
 
 
-@router.get("")
+@router.get("", dependencies=[Depends(require_any_role)])
 async def list_alerts(limit: int = 50, skip: int = 0, resolved: bool | None = None):
     """List alerts, optionally filtered by resolved status."""
     if limit > 200:
@@ -54,7 +55,7 @@ async def list_alerts(limit: int = 50, skip: int = 0, resolved: bool | None = No
     return {"alerts": alerts, "count": len(alerts)}
 
 
-@router.patch("/{alert_id}/resolve")
+@router.patch("/{alert_id}/resolve", dependencies=[Depends(require_operator)])
 async def resolve_alert(alert_id: str):
     """Mark an alert as resolved."""
     from bson import ObjectId
@@ -72,15 +73,22 @@ async def resolve_alert(alert_id: str):
     if result.matched_count == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found")
 
-    await mongo.get_db().audit_logs.insert_one({
+    now = datetime.now(timezone.utc)
+    await db.audit_logs.insert_one({
         "action": "alert_resolved",
         "alert_id": alert_id,
-        "created_at": datetime.now(timezone.utc),
+        "created_at": now,
     })
+
+    await webhooks.fire("alert.resolved", {
+        "alert_id": alert_id,
+        "resolved_at": now.isoformat(),
+    })
+
     return {"status": "resolved", "alert_id": alert_id}
 
 
-@router.get("/{alert_id}/triage")
+@router.get("/{alert_id}/triage", dependencies=[Depends(require_any_role)])
 async def triage_alert(alert_id: str):
     """
     Generate an AI-assisted triage report for an alert.

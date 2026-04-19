@@ -178,3 +178,83 @@ async def test_fire_delivers_to_multiple_hooks():
         await webhook_svc.fire("alert.created", {"alert_type": "brute_force_detected"})
 
     assert mock_deliver.call_count == 2
+
+
+# ── GET /webhooks/{id}/deliveries ─────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_list_deliveries_returns_200(client, mock_mongo):
+    from tests.conftest import _async_cursor
+    mock_mongo.webhook_delivery_log.find = MagicMock(return_value=_async_cursor([]))
+    resp = await client.get("/webhooks/64f1a2b3c4d5e6f7a8b9c0d1/deliveries")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "deliveries" in data
+    assert "count" in data
+
+
+@pytest.mark.asyncio
+async def test_list_deliveries_invalid_id(client):
+    resp = await client.get("/webhooks/not-an-id/deliveries")
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_delivery_log_written_on_success():
+    """_deliver writes a success entry to webhook_delivery_log."""
+    from unittest.mock import MagicMock, AsyncMock, patch
+    import httpx
+
+    hook = {"_id": "64f1a2b3c4d5e6f7a8b9c0d1", "url": "https://ok.example.com/hook",
+            "type": "generic", "secret": None}
+    envelope = {"event": "alert.created", "timestamp": "2026-01-01T00:00:00+00:00", "data": {}}
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.raise_for_status = MagicMock()
+
+    mock_col = MagicMock()
+    mock_col.insert_one = AsyncMock()
+    mock_db = MagicMock()
+    mock_db.webhook_delivery_log = mock_col
+
+    with patch("backend.services.webhooks.mongo.get_db", return_value=mock_db), \
+         patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_resp)
+        mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        await webhook_svc._deliver(hook, envelope)
+
+    mock_col.insert_one.assert_awaited_once()
+    log_doc = mock_col.insert_one.call_args[0][0]
+    assert log_doc["outcome"] == "success"
+    assert log_doc["webhook_id"] == "64f1a2b3c4d5e6f7a8b9c0d1"
+
+
+@pytest.mark.asyncio
+async def test_delivery_log_written_on_failure():
+    """_deliver writes a failed entry to webhook_delivery_log on exhausted retries."""
+    hook = {"_id": "64f1a2b3c4d5e6f7a8b9c0d1", "url": "https://fail.example.com/hook",
+            "type": "generic", "secret": None}
+    envelope = {"event": "alert.created", "timestamp": "2026-01-01T00:00:00+00:00", "data": {}}
+
+    mock_col = MagicMock()
+    mock_col.insert_one = AsyncMock()
+    mock_db = MagicMock()
+    mock_db.webhook_delivery_log = mock_col
+
+    with patch("backend.services.webhooks.mongo.get_db", return_value=mock_db), \
+         patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(side_effect=httpx.ConnectError("refused"))
+        mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        await webhook_svc._deliver(hook, envelope)
+
+    mock_col.insert_one.assert_awaited_once()
+    log_doc = mock_col.insert_one.call_args[0][0]
+    assert log_doc["outcome"] == "failed"
+    assert "error" in log_doc

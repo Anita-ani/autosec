@@ -7,6 +7,8 @@ import { HorizontalBarChart } from './components/HorizontalBarChart'
 import { AlertsTable } from './components/AlertsTable'
 import { CountriesTable } from './components/CountriesTable'
 import { BlockedIpsTable } from './components/BlockedIpsTable'
+import { Login } from './components/Login'
+import { isAuthenticated, clearSession, getRole } from './auth'
 import './App.css'
 
 const POLL_INTERVAL = 30_000
@@ -41,6 +43,16 @@ function usePolled<T>(fetcher: () => Promise<T>, intervalMs: number) {
 }
 
 export default function App() {
+  const [authed, setAuthed] = useState(isAuthenticated)
+
+  if (!authed) {
+    return <Login onLogin={() => setAuthed(true)} />
+  }
+
+  return <Dashboard onLogout={() => { clearSession(); setAuthed(false) }} />
+}
+
+function Dashboard({ onLogout }: { onLogout: () => void }) {
   const stats = usePolled<Stats>(fetchStats, POLL_INTERVAL)
   const alertsData = usePolled<{ alerts: Alert[]; count: number }>(
     () => fetchAlerts(20),
@@ -49,6 +61,7 @@ export default function App() {
 
   const lastUpdated = stats.lastUpdated ?? alertsData.lastUpdated
   const hasError = stats.error || alertsData.error
+  const role = getRole()
 
   return (
     <div className="app">
@@ -73,6 +86,8 @@ export default function App() {
               : 'Loading…'}
           </span>
           <span className="poll-note">auto-refresh 30s</span>
+          {role && <span className="role-badge">{role}</span>}
+          <button className="logout-btn" onClick={onLogout}>Sign out</button>
         </div>
       </header>
 

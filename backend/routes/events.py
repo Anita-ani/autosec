@@ -1,8 +1,9 @@
 import logging
-from fastapi import APIRouter, Request, HTTPException, status
+from fastapi import APIRouter, Depends, Request, HTTPException, status
 from datetime import datetime, timezone
 from bson import ObjectId
 
+from backend.dependencies import require_operator, require_any_role
 from backend.models.schemas import EventPayload
 from backend.services import mongo, n8n, detection, geo, webhooks
 
@@ -10,7 +11,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/events", tags=["Events"])
 
 
-@router.post("", status_code=status.HTTP_202_ACCEPTED)
+@router.post("", status_code=status.HTTP_202_ACCEPTED, dependencies=[Depends(require_operator)])
 async def ingest_event(payload: EventPayload, request: Request):
     """
     Ingest a security event.
@@ -94,7 +95,7 @@ async def ingest_event(payload: EventPayload, request: Request):
     return {"status": "accepted", "event_id": event_id, "alerts_triggered": alerts_created}
 
 
-@router.get("")
+@router.get("", dependencies=[Depends(require_any_role)])
 async def list_events(limit: int = 50, skip: int = 0):
     """Return the most recent events (max 200)."""
     if limit > 200:

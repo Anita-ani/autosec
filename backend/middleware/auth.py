@@ -18,6 +18,10 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
         if request.url.path in PUBLIC_PATHS:
             return await call_next(request)
 
+        # JWT Bearer auth — route dependencies handle token validation
+        if request.headers.get("Authorization", "").startswith("Bearer "):
+            return await call_next(request)
+
         api_key = request.headers.get("X-API-Key", "")
         expected = os.environ.get("API_KEY", "")
 

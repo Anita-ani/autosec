@@ -2,15 +2,16 @@
 Stats endpoint — aggregated summary for dashboards and monitoring.
 All queries hit MongoDB directly; results are not cached (use a caching layer in Phase 3).
 """
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from datetime import datetime, timezone, timedelta
 
+from backend.dependencies import require_any_role
 from backend.services import mongo
 
 router = APIRouter(prefix="/stats", tags=["Stats"])
 
 
-@router.get("")
+@router.get("", dependencies=[Depends(require_any_role)])
 async def get_stats():
     """
     Return platform-wide summary statistics:

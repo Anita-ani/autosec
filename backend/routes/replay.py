@@ -9,11 +9,12 @@ dry_run defaults to true — safe to call without side effects.
 Set dry_run=false to actually create the alerts in the database.
 """
 import logging
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, field_validator, model_validator
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
+from backend.dependencies import require_operator
 from backend.services import replay as replay_svc
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,7 @@ class ReplayRequest(BaseModel):
         return self
 
 
-@router.post("", status_code=status.HTTP_200_OK)
+@router.post("", status_code=status.HTTP_200_OK, dependencies=[Depends(require_operator)])
 async def replay_detection(body: ReplayRequest):
     """
     Re-run detection rules over events in [since, until].
